@@ -1,0 +1,80 @@
+---
+title: "DMML  Group project 31"
+format: html
+editor: visual
+---
+
+## 
+
+---
+
+title: "Analysis of drug use prediction based on different measurements
+
+author: "DMML group 31 "
+
+---
+
+**#Introduction**
+
+This analysis focuses on understanding the measurements that can help us predict the drug use by using several machine learning classification techniques. The dataset assigned to our group contains 1885 records who have different categories of drug use. We aims to use at least four machine learning techniques to predict the drug use based on the measurements given in dataset .
+
+```{r}
+#| label: libraries
+library(readr)
+library(dplyr)
+library(pROC)
+library(randomForest)
+
+
+```
+
+```{r}
+# merging the seven categories of drug use into three 
+drug_data<-read.csv("C:/Users/丁乐之2024/OneDrive/Documents/group_31.csv")
+drug_data <- drug_data %>%
+     mutate(Drug_Use_Category = case_when(
+         Choc == "CL0" ~ 1,  # never used
+         Choc %in% c("CL1", "CL2") ~ 2,  #  used over a decade over
+         Choc %in% c("CL3", "CL4", "CL5", "CL6") ~ 3  # used in last decade
+     ))
+
+# convert the numerical variables into binary variables
+drug_data$Age <- as.factor(drug_data$Age)
+drug_data$Gender <- as.factor(drug_data$Gender)
+drug_data$Education <- as.factor(drug_data$Education)
+drug_data$Country <- as.factor(drug_data$Country)
+drug_data$Ethnicity <- as.factor(drug_data$Ethnicity)
+drug_data$Nscore <- as.factor(drug_data$Nscore)
+drug_data$Escore <- as.factor(drug_data$Escore)
+drug_data$Oscore <- as.factor(drug_data$Oscore)
+drug_data$Ascore <- as.factor(drug_data$Ascore)
+drug_data$Cscore <- as.factor(drug_data$Cscore)
+drug_data$Impulsive <- as.factor(drug_data$Impulsive)
+drug_data$SS <- as.factor(drug_data$SS)
+drug_data$Choc <- as.factor(drug_data$Choc)
+drug_data$Drug_Use_Category <- as.factor(drug_data$Drug_Use_Category)
+
+# spliting train and validation dataset 
+set.seed(42)
+n <- nrow(drug_data)
+idx <- sample(1:n, round(0.2*n))
+drug_data_val <- train[idx,]
+drug_data_train <- train[-idx,]
+
+# building bagging and randomforest tree
+set.seed(42)
+bagging <- randomForest(Drug_Use_Category~Age+Gender+Education+Country+Ethnicity+Nscore+Escore+Oscore+Ascore+Cscore+Impulsive+SS, data=drug_data_train,mtry=4, ntree=200)
+
+set.seed(42)
+rf <- randomForest(Drug_Use_Category~Age+Gender+Education+Country+Ethnicity+Nscore+Escore+Oscore+Ascore+Cscore+Impulsive+SS, data=drug_data_train, ntree=200)
+
+# making predictions and printing prediction accurate rate
+bagging_auc <- multiclass.roc(drug_data_val$Drug_Use_Category, bagging_prob)
+print(paste("Bagging AUC:", bagging_auc$auc))
+rf_auc <- multiclass.roc(drug_data_val$Drug_Use_Category, rf_prob)
+print(paste("Random Forest AUC:", rf_auc$auc))
+
+
+
+
+```
