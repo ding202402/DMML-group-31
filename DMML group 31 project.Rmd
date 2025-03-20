@@ -1,12 +1,15 @@
 ---
 title: "DMML Group 31 project"
 output: pdf_document
-date: "2025-03-20"
+date: "`r Sys.Date()`"
+
 ---
 
 #Introduction
 
-This analysis focuses on understanding the measurements that can help us predict the drug use by using several machine learning classification techniques. The dataset assigned to our group contains 1885 records who have different categories of drug use. We aims to use at least four machine learning techniques to predict the drug use based on the measurements given in dataset .
+This analysis focuses on understanding the measurements that can help us predict the drug use by using several machine learning classification techniques. The dataset assigned to our group contains 1885 records who have different categories of drug use. We aims to use at least four machine learning techniques to predict the drug use based on the measurements given in dataset.
+
+We first use bagging forest and randomforest models.
 
 ```{r}
 #| label: libraries
@@ -28,7 +31,7 @@ drug_data <- drug_data %>%
          Choc %in% c("CL1", "CL2") ~ 2,  #  used over a decade over
          Choc %in% c("CL3", "CL4", "CL5", "CL6") ~ 3  # used in last decade
      ))%>%
-    select(-Choc)
+    select(-Choc,-ID)
 
 #Converting binary variables into factors
 
@@ -76,4 +79,4 @@ print(paste("Bagging Test AUC:", bagging_test_auc$auc))
 print(paste("Random Forest Test AUC:", rf_test_auc$auc))
 ```
 
-According to the prediction correct rate, the random forest model preforms slightly better than bagging test. So I choose random forest to predict drug_data_categories.
+According to the prediction correct rate, the Bagging tree model preforms slightly better than randomforest model. So I choose Bagging tree model to predict drug_data_categories.
