@@ -43,7 +43,7 @@ drug_data$Drug_Use_Category <- as.factor(drug_data$Drug_Use_Category)
 
 
 
-#spliting dataset into training,testing and validating datasets, to improving models performance in prediction, we use stratification sampling
+#splitting dataset into training,testing and validating datasets, to improving models performance in prediction, we use stratification sampling
 
 set.seed(42)
 ind1 <- createDataPartition(drug_data$Drug_Use_Category, p = 0.5, list = FALSE)
@@ -80,3 +80,27 @@ print(paste("Random Forest Test AUC:", rf_test_auc$auc))
 ```
 
 According to the prediction correct rate, the Bagging tree model preforms slightly better than randomforest model. So I choose Bagging tree model to predict drug_data_categories.
+
+Here we tried to filter the variables by mean GINI Importance, we select the variables that has mean Gini 
+importance scores >2, and see if it can improve the models performances.
+
+```{r}
+importance(bagging)
+important_vars_bagging <- names(which(importance(bagging)[, "MeanDecreaseGini"] > 3))
+print(important_vars_bagging)
+bagging <- randomForest(Drug_Use_Category~Age+Education+Nscore+Escore+Oscore+Ascore+Cscore+Impulsive+SS, data=drug_data_train,importance = TRUE,mtry=4, ntree=200)
+rf <- randomForest(Drug_Use_Category~Age+Education+Nscore+Escore+Oscore+Ascore+Cscore+Impulsive+SS, data=drug_data_train,importance = TRUE,ntree=200)
+
+bagging_testpro <- predict(bagging, drug_data_test, type = "prob")
+rf_testpro <- predict(rf, drug_data_test, type = "prob")
+
+bagging_test_auc <- multiclass.roc(drug_data_test$Drug_Use_Category, bagging_testpro[, 1])
+rf_test_auc <- multiclass.roc(drug_data_test$Drug_Use_Category, rf_testpro[, 1])
+
+print(paste("Bagging Test AUC:", bagging_test_auc$auc))
+print(paste("Random Forest Test AUC:", rf_test_auc$auc))
+
+
+```
+
+The AUC scores decrease compare to the models which contain all variables. So we choose the models containing all variables.
