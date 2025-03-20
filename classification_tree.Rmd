@@ -1,0 +1,80 @@
+---
+title: "Classification of Drug Consumption Patterns Using Machine Learning Techniques"
+author: "Group 31"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+##### Method:classification tree
+
+```{r setup, include=FALSE}
+#|label:Load necessary libraries
+library(readr)
+library(dplyr)
+library(GGally)
+library(rpart)
+library(rpart.plot)
+library(caret)
+knitr::opts_chunk$set(fig.path = "classification_tree_files/figure-pdf/", dev = "pdf")
+```
+
+```{r}
+#|label:Load data and data preprocessing
+# Load data
+setwd('D:/UofG Study/Data Mining/Group31')
+data<-read.csv("D:/UofG Study/Data Mining/Group31/group_31.csv")
+str(data)
+summary(data)
+# Data cleaning
+clean_data <- na.omit(data)
+table(clean_data$Choc)
+# merging the seven categories of drug use into three 
+merged_data <- clean_data %>%
+    mutate(Choc = case_when(
+        Choc == "CL0" ~ "Never Used",
+        Choc %in% c("CL1", "CL2") ~ "Used Over a Decade Ago",
+        Choc %in% c("CL3", "CL4", "CL5", "CL6") ~ "Used in Last Decade"
+    )) %>%
+    mutate(Choc = factor(Choc, levels = c("Never Used", "Used Over a Decade Ago", "Used in Last Decade")))
+table(merged_data$Choc)
+# Convert categorical variables to factors
+merged_data$Gender <- as.factor(merged_data$Gender)      
+merged_data$Education <- as.factor(merged_data$Education)  
+merged_data$Country <- as.factor(merged_data$Country)    
+merged_data$Ethnicity <- as.factor(merged_data$Ethnicity)  
+merged_data$Choc <- as.factor(merged_data$Choc)
+```
+
+
+
+```{r}
+#|label:Split the data into training and testing sets with stratified sampling for class balance
+set.seed(1)
+trainIndex <- createDataPartition(merged_data$Choc, p = 0.8, list = FALSE)
+train_data <- merged_data[trainIndex, ]
+test_data  <- merged_data[-trainIndex, ] 
+```
+
+```{r}
+#|label:Build a classification tree model  
+# Assign higher weights to "Used Over a Decade Ago" class samples to address class imbalance
+weights <- ifelse(train_data$Choc == "Used Over a Decade Ago", 2, 1)
+# Train a classification tree model with weighted data, controlling tree complexity and handling class imbalance
+Model <- rpart(Choc ~ Age + Gender + Education + Country + Ethnicity + 
+               Nscore + Escore + Oscore + Ascore + Cscore + Impulsive + SS, 
+               data = train_data, method = "class", 
+               control = rpart.control(cp = 0.001), 
+               weights = weights)
+# Print the model summary
+summary(Model)
+# Visualize the decision tree
+rpart.plot(Model, type = 2, extra = 4, box.palette = "Blues")
+# Make predictions on the test data
+Ynew.pred <- predict(Model, newdata = test_data, type = "class")
+# Evaluate the model performance (Confusion Matrix)
+confusion_matrix <- table(Predicted = Ynew.pred, Actual = test_data$Choc)
+print(confusion_matrix)
+# Calculate accuracy
+accuracy <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
+print(paste("Accuracy:", accuracy))
+```
