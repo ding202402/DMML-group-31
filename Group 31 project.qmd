@@ -30,6 +30,7 @@ library(randomForest)
 
 ```{r}
 # merging the seven categories of drug use into three 
+
 drug_data<-read.csv("C:/Users/丁乐之2024/OneDrive/Documents/group_31.csv")
 drug_data <- drug_data %>%
      mutate(Drug_Use_Category = case_when(
@@ -54,37 +55,36 @@ drug_data$SS <- as.factor(drug_data$SS)
 drug_data$Choc <- as.factor(drug_data$Choc)
 drug_data$Drug_Use_Category <- as.factor(drug_data$Drug_Use_Category)
 
-n <- nrow(drug_data)
-ind1 <- sample(c(1:n), round(n/2))
-ind2 <- sample(c(1:n)[-ind1], round(n/4))
-ind3 <- setdiff(c(1:n),c(ind1,ind2))
- train<- drug_data[ind1, ]
- valid <- drug_data[ind2, ]
- test  <- drug_data[ind2, ]
+#spliting dataset into training,testing and validating datasets
 
-# spliting train and validation dataset 
 set.seed(42)
+
 n <- nrow(drug_data)
-idx <- sample(1:n, round(0.2*n))
-drug_data_val <- train[idx,]
-drug_data_train <- train[-idx,]
+ind1 <- sample(c(1:n), round(n * 0.5))  # 50% test set
+ind2 <- sample(c(1:n)[-ind1], round(n * 0.25))  # 25% test set
+ind3 <- setdiff(c(1:n), c(ind1, ind2))  # 25% test set
+
+drug_data_train<- drug_data[ind1, ]
+drug_data_val <- drug_data[ind2, ]
+drug_data_test <- drug_data[ind3, ]
+
 
 # building bagging and randomforest tree
-set.seed(42)
-bagging <- randomForest(Drug_Use_Category~Age+Gender+Education+Country+Ethnicity+Nscore+Escore+Oscore+Ascore+Cscore+Impulsive+SS, data=drug_data_train,mtry=4, ntree=200)
 
 set.seed(42)
-rf <- randomForest(Drug_Use_Category~Age+Gender+Education+Country+Ethnicity+Nscore+Escore+Oscore+Ascore+Cscore+Impulsive+SS, data=drug_data_train, ntree=200)
+bagging <- randomForest(Drug_Use_Category~., data=drug_data_train, ntree=200)
+rf <- randomForest(Drug_Use_Category~., data=drug_data_train, ntree=200)
 
-val.imputed <- na.roughfix(drug_data_val)
-bagging_prob <- predict(bagging, val.imputed, type="prob")
-rf_prob <- predict(rf, val.imputed, type="prob")
+# validate model
 
-# making predictions and printing prediction accurate rate
-bagging_auc <- multiclass.roc(drug_data_val$Drug_Use_Category, bagging_prob)
-print(paste("Bagging AUC:", bagging_auc$auc))
-rf_auc <- multiclass.roc(drug_data_val$Drug_Use_Category, rf_prob)
-print(paste("Random Forest AUC:", rf_auc$auc))
+bagging_testpro <- predict(bagging, test.imputed, type = "prob")
+rf_testpro <- predict(rf, test.imputed, type = "prob")
+
+bagging_test_auc <- multiclass.roc(test$Drug_Use_Category, bagging_test_prob)
+rf_test_auc <- multiclass.roc(test$Drug_Use_Category, rf_test_prob)
+
+print(paste("Bagging Test AUC:", bagging_test_auc$auc))
+print(paste("Random Forest Test AUC:", rf_test_auc$auc))
 
 
 
