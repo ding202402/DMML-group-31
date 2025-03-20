@@ -1,0 +1,79 @@
+---
+title: "DMML Group 31 project"
+output: pdf_document
+date: "2025-03-20"
+---
+
+#Introduction
+
+This analysis focuses on understanding the measurements that can help us predict the drug use by using several machine learning classification techniques. The dataset assigned to our group contains 1885 records who have different categories of drug use. We aims to use at least four machine learning techniques to predict the drug use based on the measurements given in dataset .
+
+```{r}
+#| label: libraries
+library(readr)
+library(dplyr)
+library(pROC)
+library(randomForest)
+library(caret)
+```
+
+
+```{r}
+# merging the seven categories of drug use into three 
+
+drug_data<-read.csv("C:/Users/丁乐之2024/OneDrive/Documents/group_31.csv")
+drug_data <- drug_data %>%
+     mutate(Drug_Use_Category = case_when(
+         Choc == "CL0" ~ 1,  # never used
+         Choc %in% c("CL1", "CL2") ~ 2,  #  used over a decade over
+         Choc %in% c("CL3", "CL4", "CL5", "CL6") ~ 3  # used in last decade
+     ))%>%
+    select(-Choc)
+
+#Converting binary variables into factors
+
+drug_data$Gender <- as.factor(drug_data$Gender)
+drug_data$Education <- as.factor(drug_data$Education)
+drug_data$Country <- as.factor(drug_data$Country)
+drug_data$Ethnicity <- as.factor(drug_data$Ethnicity)
+drug_data$Drug_Use_Category <- as.factor(drug_data$Drug_Use_Category)
+
+
+
+#spliting dataset into training,testing and validating datasets, to improving models performance in prediction, we use stratification sampling
+
+set.seed(42)
+ind1 <- createDataPartition(drug_data$Drug_Use_Category, p = 0.5, list = FALSE)
+ind2 <- createDataPartition(drug_data$Drug_Use_Category[-ind1], p = 0.5, list = FALSE)
+ind3<- setdiff(1:nrow(drug_data), c(ind1, ind2))
+
+
+drug_data_train<- drug_data[ind1, ]
+drug_data_val <- drug_data[ind2, ]
+drug_data_test <- drug_data[ind3, ]
+
+
+# building bagging and randomforest tree
+
+
+set.seed(42)
+bagging <- randomForest(Drug_Use_Category~., data=drug_data_train,importance = TRUE,mtry=4, ntree=200)
+rf <- randomForest(Drug_Use_Category~., data=drug_data_train,importance = TRUE,  ntree=200)
+
+
+
+
+
+# validate model
+
+bagging_testpro <- predict(bagging, drug_data_test, type = "prob")
+rf_testpro <- predict(rf, drug_data_test, type = "prob")
+
+bagging_test_auc <- multiclass.roc(drug_data_test$Drug_Use_Category, bagging_testpro[, 1])
+rf_test_auc <- multiclass.roc(drug_data_test$Drug_Use_Category, rf_testpro[, 1])
+
+print(paste("Bagging Test AUC:", bagging_test_auc$auc))
+print(paste("Random Forest Test AUC:", rf_test_auc$auc))
+```
+
+According to the prediction correct rate, the random forest model preforms slightly better than bagging test. So I choose random forest to predict drug_data_categories.
