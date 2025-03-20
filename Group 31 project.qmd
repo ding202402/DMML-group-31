@@ -6,13 +6,13 @@ editor: visual
 
 ## 
 
----
+------------------------------------------------------------------------
 
 title: "Analysis of drug use prediction based on different measurements
 
 author: "DMML group 31 "
 
----
+------------------------------------------------------------------------
 
 **#Introduction**
 
@@ -54,6 +54,14 @@ drug_data$SS <- as.factor(drug_data$SS)
 drug_data$Choc <- as.factor(drug_data$Choc)
 drug_data$Drug_Use_Category <- as.factor(drug_data$Drug_Use_Category)
 
+n <- nrow(drug_data)
+ind1 <- sample(c(1:n), round(n/2))
+ind2 <- sample(c(1:n)[-ind1], round(n/4))
+ind3 <- setdiff(c(1:n),c(ind1,ind2))
+ train<- drug_data[ind1, ]
+ valid <- drug_data[ind2, ]
+ test  <- drug_data[ind2, ]
+
 # spliting train and validation dataset 
 set.seed(42)
 n <- nrow(drug_data)
@@ -67,6 +75,10 @@ bagging <- randomForest(Drug_Use_Category~Age+Gender+Education+Country+Ethnicity
 
 set.seed(42)
 rf <- randomForest(Drug_Use_Category~Age+Gender+Education+Country+Ethnicity+Nscore+Escore+Oscore+Ascore+Cscore+Impulsive+SS, data=drug_data_train, ntree=200)
+
+val.imputed <- na.roughfix(drug_data_val)
+bagging_prob <- predict(bagging, val.imputed, type="prob")
+rf_prob <- predict(rf, val.imputed, type="prob")
 
 # making predictions and printing prediction accurate rate
 bagging_auc <- multiclass.roc(drug_data_val$Drug_Use_Category, bagging_prob)
