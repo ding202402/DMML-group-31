@@ -121,8 +121,7 @@ knitr::opts_chunk$set(fig.path = "classification_tree_files/figure-pdf/", dev = 
 ```{r}
 #|label:Load data and data preprocessing
 # Load data
-setwd('D:/UofG Study/Data Mining/Group31')
-data<-read.csv("D:/UofG Study/Data Mining/Group31/group_31.csv")
+data<-read.csv("C:/Users/丁乐之2024/OneDrive/Desktop/DMML Group 31 Project/group_31.csv")
 str(data)
 summary(data)
 # Data cleaning
@@ -175,6 +174,46 @@ print(confusion_matrix)
 # Calculate accuracy
 accuracy <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
 print(paste("Accuracy:", accuracy))
+```
+```{r}
+data <- read.csv("C:/Users/丁乐之2024/OneDrive/Desktop/DMML Group 31 Project/group_31.csv")
+skim(data)
+ggpairs(data, columns=2:13, ggplot2::aes(colour=Choc, alpha=0.2))
+warnings()
+
+
+set.seed(1)
+n <- nrow(data)
+ind1 <- sample(c(1:n), floor(0.5*n))
+ind2 <- sample(c(1:n)[-ind1], floor(0.25*n))
+ind3 <- setdiff(c(1:n),c(ind1,ind2))
+data.train <- data[ind1,]
+data.valid <- data[ind2,]
+data.test  <- data[ind3,]
+
+head(data)
+var.mean <- apply(data.train[,2:13],2,mean)
+var.sd   <- apply(data.train[,2:13],2,sd)
+
+data.train.scale <-t(apply(data.train[,2:13], 1, function(x) (x-var.mean)/var.sd))
+data.valid.scale <-t(apply(data.valid[,2:13], 1, function(x) (x-var.mean)/var.sd))
+data.test.scale  <-t(apply(data.test[,2:13],  1, function(x) (x-var.mean)/var.sd))
+
+library(class)
+set.seed(1)
+K <- c(1:15)
+valid.corr <- c()
+for (k in K){
+  valid.pred <- knn(data.train.scale, data.valid.scale, data.train[,14], k=k)
+  valid.corr[k] <- mean(data.valid[,14] == valid.pred)
+}
+
+plot(K, valid.corr, type="b", ylab="validation correct classification rate")
+
+
+k.opt <- which.max(valid.corr)
+test.pred <- knn(data.train.scale, data.test.scale, data.train[,14], k=k.opt)
+table(data.test$Choc,test.pred)
 ```
 
 
