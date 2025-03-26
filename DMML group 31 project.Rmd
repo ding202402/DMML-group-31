@@ -9,6 +9,8 @@ date: "`r Sys.Date()`"
 
 This analysis focuses on understanding the measurements that can help us predict the drug use by using several machine learning classification techniques. The dataset assigned to our group contains 1885 records who have different categories of drug use. We aims to use at least four machine learning techniques to predict the drug use based on the measurements given in dataset.
 
+#Building models
+
 We first use bagging forest and randomforest models.
 
 ```{r}
@@ -22,7 +24,7 @@ library(caret)
 
 
 ```{r}
-# merging the seven categories of drug use into three 
+# Merging the seven categories of drug use into three 
 
 drug_data<-read.csv("C:/Users/丁乐之2024/OneDrive/Documents/group_31.csv")
 drug_data <- drug_data %>%
@@ -43,7 +45,7 @@ drug_data$Drug_Use_Category <- as.factor(drug_data$Drug_Use_Category)
 
 
 
-#splitting dataset into training,testing and validating datasets, to improving models performance in prediction, we use stratification sampling
+#Splitting drug_data dataset into training,testing and validating sets, to improving models performance in prediction, we use stratification sampling
 
 set.seed(42)
 ind1 <- createDataPartition(drug_data$Drug_Use_Category, p = 0.5, list = FALSE)
@@ -67,7 +69,7 @@ rf <- randomForest(Drug_Use_Category~., data=drug_data_train,importance = TRUE, 
 
 
 
-# validate model
+# validating model
 
 bagging_testpro <- predict(bagging, drug_data_test, type = "prob")
 rf_testpro <- predict(rf, drug_data_test, type = "prob")
@@ -85,9 +87,13 @@ Here we tried to filter the variables by mean GINI Importance, we select the var
 importance scores >2, and see if it can improve the models performances.
 
 ```{r}
+
+# Filtering factors by GINI mean score
 importance(bagging)
 important_vars_bagging <- names(which(importance(bagging)[, "MeanDecreaseGini"] > 3))
 print(important_vars_bagging)
+
+# Building the models by using the factors after modeling
 bagging <- randomForest(Drug_Use_Category~Age+Education+Nscore+Escore+Oscore+Ascore+Cscore+Impulsive+SS, data=drug_data_train,importance = TRUE,mtry=4, ntree=200)
 rf <- randomForest(Drug_Use_Category~Age+Education+Nscore+Escore+Oscore+Ascore+Cscore+Impulsive+SS, data=drug_data_train,importance = TRUE,ntree=200)
 
@@ -181,7 +187,7 @@ skim(data)
 ggpairs(data, columns=2:13, ggplot2::aes(colour=Choc, alpha=0.2))
 warnings()
 
-
+# Using the KNN method to cataegories of drug use 
 set.seed(1)
 n <- nrow(data)
 ind1 <- sample(c(1:n), floor(0.5*n))
