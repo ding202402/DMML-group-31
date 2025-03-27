@@ -20,6 +20,11 @@ library(dplyr)
 library(pROC)
 library(randomForest)
 library(caret)
+library(skimr)
+library(tidyr)
+library(ggplot2)
+library(readr)
+
 ```
 
 
@@ -27,13 +32,17 @@ library(caret)
 # Merging the seven categories of drug use into three 
 
 drug_data<-read.csv("C:/Users/丁乐之2024/OneDrive/Documents/group_31.csv")
+
+
 drug_data <- drug_data %>%
-     mutate(Drug_Use_Category = case_when(
-         Choc == "CL0" ~ 1,  # never used
-         Choc %in% c("CL1", "CL2") ~ 2,  #  used over a decade over
-         Choc %in% c("CL3", "CL4", "CL5", "CL6") ~ 3  # used in last decade
-     ))%>%
-    select(-Choc,-ID)
+    mutate(Drug_Use_Category = case_when(
+    Choc == "CL0" ~ 1,  # never used
+    Choc %in% c("CL1", "CL2") ~ 2,  # used over a decade ago
+    Choc %in% c("CL3", "CL4", "CL5", "CL6") ~ 3  # used in last decade
+  )) 
+
+drug_data %>% select(-Choc,-ID)
+ 
 
 #Converting binary variables into factors
 
@@ -45,7 +54,7 @@ drug_data$Drug_Use_Category <- as.factor(drug_data$Drug_Use_Category)
 
 
 
-#Splitting drug_data dataset into training,testing and validating sets, to improving models performance in prediction, we use stratification sampling
+#Splitting drug_data dataset into training,testing and validating sets, to improving models performance in prediction, we use stratification sampling. The arrangement of the numbers of dataset is 50% training and 50% validating.
 
 set.seed(42)
 ind1 <- createDataPartition(drug_data$Drug_Use_Category, p = 0.5, list = FALSE)
@@ -53,8 +62,8 @@ ind2 <- createDataPartition(drug_data$Drug_Use_Category[-ind1], p = 0.5, list = 
 ind3<- setdiff(1:nrow(drug_data), c(ind1, ind2))
 
 
-drug_data_train<- drug_data[ind1, ]
-drug_data_val <- drug_data[ind2, ]
+drug_data_train<- drug_data[ind1, ] # 50% training
+drug_data_val <- drug_data[ind2, ]  # 50% validating
 drug_data_test <- drug_data[ind3, ]
 
 
@@ -69,7 +78,7 @@ rf <- randomForest(Drug_Use_Category~., data=drug_data_train,importance = TRUE, 
 
 
 
-# validating model
+# validating model, we evaluate the effectiveness of models by AUC scores
 
 bagging_testpro <- predict(bagging, drug_data_test, type = "prob")
 rf_testpro <- predict(rf, drug_data_test, type = "prob")
@@ -109,7 +118,7 @@ print(paste("Random Forest Test AUC:", rf_test_auc$auc))
 
 ```
 
-The AUC scores decrease compare to the models which contain all variables. So we choose the models containing all variables.
+The AUC scores decrease compare to the models which contain all variables. So we abandon filtering variables and choose the models containing all variables.
 
 Here we used classification tree.
 
@@ -187,39 +196,61 @@ skim(data)
 ggpairs(data, columns=2:13, ggplot2::aes(colour=Choc, alpha=0.2))
 warnings()
 
-# Using the KNN method to cataegories of drug use 
+#Load necessary libraries
+library(skimr)
+library(GGally)
+library(dplyr)
+library(class)
+
+#merging the seven categories of drug use into three
+data <- na.omit(data) %>%
+  mutate(
+    Choc = case_when(
+      Choc == "CL0" ~ "Never Used",
+      Choc %in% c("CL1", "CL2") ~ "Used Over a Decade Ago",
+      Choc %in% c("CL3", "CL4", "CL5", "CL6") ~ "Used in Last Decade"
+    )
+  ) %>%
+  mutate(Choc = factor(Choc))
+
+#Data splitting
 set.seed(1)
 n <- nrow(data)
-ind1 <- sample(c(1:n), floor(0.5*n))
-ind2 <- sample(c(1:n)[-ind1], floor(0.25*n))
-ind3 <- setdiff(c(1:n),c(ind1,ind2))
+ind1 <- sample(n, floor(0.5*n))
+ind2 <- sample(setdiff(1:n, ind1), floor(0.25*n)) 
+ind3 <- setdiff(1:n, c(ind1,ind2))
 data.train <- data[ind1,]
 data.valid <- data[ind2,]
 data.test  <- data[ind3,]
 
-head(data)
-var.mean <- apply(data.train[,2:13],2,mean)
-var.sd   <- apply(data.train[,2:13],2,sd)
+#Check for zero-variance features and compute mean/standard deviation for scaling
+valid_cols <- which(apply(data.train[,2:13], 2, sd) > 0)
+var.mean <- apply(data.train[,2:13][,valid_cols], 2, mean)
+var.sd <- apply(data.train[,2:13][,valid_cols], 2, sd)
 
-data.train.scale <-t(apply(data.train[,2:13], 1, function(x) (x-var.mean)/var.sd))
-data.valid.scale <-t(apply(data.valid[,2:13], 1, function(x) (x-var.mean)/var.sd))
-data.test.scale  <-t(apply(data.test[,2:13],  1, function(x) (x-var.mean)/var.sd))
+#standardise training, validation and test sets
+scale_fn <- function(x) (x - var.mean)/var.sd
+data.train.scale <- t(apply(data.train[,2:13][,valid_cols], 1, scale_fn))
+data.valid.scale <- t(apply(data.valid[,2:13][,valid_cols], 1, scale_fn)) 
+data.test.scale  <- t(apply(data.test[,2:13][,valid_cols], 1, scale_fn))
 
-library(class)
+#Finding the optimal value of k
 set.seed(1)
-K <- c(1:15)
-valid.corr <- c()
-for (k in K){
-  valid.pred <- knn(data.train.scale, data.valid.scale, data.train[,14], k=k)
-  valid.corr[k] <- mean(data.valid[,14] == valid.pred)
+K <- 1:15
+valid.corr <- numeric(15)
+for(k in K){
+  valid.pred <- knn(data.train.scale, data.valid.scale, data.train$Choc, k=k)
+  valid.corr[k] <- mean(valid.pred == data.valid$Choc)
 }
-
 plot(K, valid.corr, type="b", ylab="validation correct classification rate")
 
-
+#Prediction
 k.opt <- which.max(valid.corr)
-test.pred <- knn(data.train.scale, data.test.scale, data.train[,14], k=k.opt)
-table(data.test$Choc,test.pred)
+test.pred <- knn(data.train.scale, data.test.scale, data.train$Choc, k=k.opt)
+conf_matrix <- table(data.test$Choc, test.pred)
+accuracy <- sum(diag(conf_matrix))/sum(conf_matrix)
+print(conf_matrix)
+print(paste("Accuracy:", round(accuracy, 4)))
 ```
 
 
